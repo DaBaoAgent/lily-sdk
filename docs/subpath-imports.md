@@ -14,7 +14,11 @@
 
 ```typescript
 import { LilySdk } from 'lily-sdk';
-import { LilyApiError, isLilySdkError } from 'lily-sdk/errors';
+import {
+  LilyApiError,
+  LilyValidationError,
+  isLilySdkError,
+} from 'lily-sdk/errors';
 import type { LilySdkConfig } from 'lily-sdk/config';
 import { createFetchHttpClient } from 'lily-sdk/http';
 import { paginate, type CursorPage } from 'lily-sdk/pagination';
