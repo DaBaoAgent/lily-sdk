@@ -42,7 +42,11 @@ export class LilySdk {
     this.wallets = new WalletClient(this.httpClient);
     this.payments = new PaymentClient(this.httpClient);
     this.identity = new IdentityClient(this.httpClient);
-    this.system = new SystemClient(this.httpClient);
+    this.system = new SystemClient(this.httpClient, {
+      ...(this.config.validateResponses !== undefined
+        ? { validateResponses: this.config.validateResponses }
+        : {}),
+    });
   }
 
   /**
@@ -135,6 +139,11 @@ export class LilySdk {
         ? { authToken: overrides.authToken }
         : this.config.authToken !== undefined
           ? { authToken: this.config.authToken }
+          : {}),
+      ...(overrides.validateResponses !== undefined
+        ? { validateResponses: overrides.validateResponses }
+        : this.config.validateResponses !== undefined
+          ? { validateResponses: this.config.validateResponses }
           : {}),
     };
 
