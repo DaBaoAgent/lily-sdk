@@ -10,6 +10,8 @@ import type {
   PaymentQuoteRequest,
 } from './models/payment';
 import type { ResolveIdentityRequest } from './models/identity';
+import type { CreateAgentRequest, UpdateAgentRequest } from './models/agent';
+import type { ProvisionWalletRequest } from './models/wallet';
 
 const VALID_NETWORKS = new Set(['stellar-testnet', 'stellar-mainnet']);
 const VALID_RESOURCE_STATUSES = new Set<ResourceStatus>([
