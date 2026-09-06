@@ -114,6 +114,19 @@ describe('pagination helper (issue #61)', () => {
     it('stops at maxPages while the server keeps returning cursors', async () => {
       const fetchPage = vi.fn().mockResolvedValue(page([1, 2], 'c-next'));
       const results: number[] = [];
+      for await (const item of paginate<number>(fetchPage, { limit: 2 })) {
+        results.push(item);
+      }
+      expect(results).toEqual([1, 2]);
+      expect(fetchPage).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops at maxPages when limit and maxPages are set with continuous cursor', async () => {
+      const fetchPage = vi.fn().mockImplementation((query) => {
+        const pageNum = query?.cursor ? parseInt(query.cursor.replace('c', ''), 10) : 1;
+        return Promise.resolve(parseCursorPage([pageNum * 2 - 1, pageNum * 2], `c${pageNum + 1}`));
+      });
+      const results: number[] = [];
       for await (const item of paginate<number>(fetchPage, {
         limit: 2,
         maxPages: 3,

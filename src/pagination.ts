@@ -36,6 +36,11 @@ export function buildPaginationQuery(
 }
 
 /**
+ * Page response shape accepted by paginate. Supports either a CursorPage or a plain array.
+ */
+export type PageResult<T> = readonly T[] | CursorPage<T>;
+
+/**
  * Async iterator helper that auto-paginates through a cursor-based list endpoint.
  *
  * `fetchPage` receives a `PaginationQuery` (containing the `cursor` from the
