@@ -9,6 +9,7 @@ import type {
 import type { PaymentClientContract } from '../types/contracts';
 import {
   validateExecutePaymentRequest,
+  validateNonEmptyString,
   validatePaymentQuoteRequest,
 } from '../validation';
 import { BaseClient } from './base-client';
