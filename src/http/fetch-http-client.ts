@@ -22,6 +22,45 @@ import { DEFAULT_RETRY_POLICY } from '../config/defaults';
 const DEFAULT_RETRYABLE_STATUS_CODES =
   DEFAULT_RETRY_POLICY.retryableStatusCodes;
 
+/**
+ * Resolves and validates the per-request timeout override.
+ *
+ * - `undefined` → use the config default (caller must not pass an invalid value)
+ * - `0`         → explicit opt-out of timeout (documented behavior)
+ * - Any other value that is not a finite non-negative number → throw
+ *   `LilyValidationError` so the caller gets immediate feedback without
+ *   dispatching a request or consuming a retry.
+ */
+export function resolveRequestTimeout(
+  requestTimeoutMs: number | undefined,
+  configTimeoutMs: number,
+): number | 0 {
+  if (requestTimeoutMs === undefined) {
+    return configTimeoutMs;
+  }
+
+  // `0` is the documented per-request opt-out — allow it explicitly.
+  if (requestTimeoutMs === 0) {
+    return 0;
+  }
+
+  if (
+    typeof requestTimeoutMs !== 'number' ||
+    !Number.isFinite(requestTimeoutMs) ||
+    requestTimeoutMs < 0
+  ) {
+    throw new LilyValidationError(
+      `Per-request \`timeoutMs\` must be a non-negative finite number (got ${JSON.stringify(requestTimeoutMs)}).`,
+      {
+        code: LILY_ERROR_CODES.VALIDATION_ERROR,
+        details: { timeoutMs: requestTimeoutMs },
+      },
+    );
+  }
+
+  return requestTimeoutMs;
+}
+
 export function createFetchHttpClient(
   config: ResolvedLilySdkConfig,
 ): HttpClient {
