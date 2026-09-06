@@ -8,6 +8,11 @@ export type {
 export { resolveLilySdkConfig } from './config/resolve-config';
 export { DEFAULT_TIMEOUT_MS, DEFAULT_RETRY_POLICY } from './config/defaults';
 export {
+  DEFAULT_TIMEOUT_MS,
+  DEFAULT_RETRY_POLICY,
+  DEFAULT_RETRYABLE_STATUS_CODES,
+} from './config/defaults';
+export {
   LILY_ERROR_CODES,
   LilySdkError,
   LilyConfigError,
