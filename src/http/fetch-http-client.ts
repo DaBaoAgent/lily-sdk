@@ -198,7 +198,10 @@ export function createFetchHttpClient(
           await lifecycle?.beforeRequest?.(request);
           const response = await config.fetch(url, requestInit);
 
-          const data = (await parseResponse(response)) as TResponse;
+          const data = (await parseResponse(
+            response,
+            requestMetadata(request, url),
+          )) as TResponse;
 
           if (response.ok) {
             cleanup();
@@ -432,12 +435,16 @@ function serializeBody(body: unknown): BodyInit | undefined {
   return JSON.stringify(body);
 }
 
-async function parseResponse(response: Response): Promise<unknown> {
+async function parseResponse(
+  response: Response,
+  request: { method: string; path: string; url: string },
+): Promise<unknown> {
   if (response.status === 204) {
     return null;
   }
 
   const contentType = response.headers.get('content-type') ?? '';
+  const isJson = contentType.includes('application/json');
 
   if (contentType.includes('application/json')) {
     // Read body once as text to avoid double-consumption, then parse.
@@ -466,6 +473,21 @@ async function parseResponse(response: Response): Promise<unknown> {
           cause: error,
         },
       );
+    }
+  }
+
+  if (isJson) {
+    const rawBody = await response.text().catch(() => '');
+    try {
+      return JSON.parse(rawBody) as unknown;
+    } catch (error) {
+      throw new LilyApiError('Lily Protocol API request failed.', {
+        code: LILY_ERROR_CODES.API_ERROR,
+        statusCode: response.status,
+        details: { contentType, body: rawBody },
+        request,
+        cause: error,
+      });
     }
   }
 
