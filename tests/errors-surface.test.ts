@@ -21,4 +21,10 @@ describe('error exports surface', () => {
     expect(errors.LilyAuthenticationError).toBeDefined();
     expect(errors.LilyApiError).toBeDefined();
   });
+
+  it('isLilySdkError type guard works correctly', () => {
+    expect(errors.isLilySdkError(new errors.LilySdkError('test'))).toBe(true);
+    expect(errors.isLilySdkError('not an error')).toBe(false);
+    expect(errors.isLilySdkError(null)).toBe(false);
+  });
 });
