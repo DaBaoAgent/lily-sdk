@@ -102,7 +102,11 @@ export function resolveRequestTimeout(
 
 export function createFetchHttpClient(
   config: ResolvedLilySdkConfig,
+  hooks?: RequestLifecycleHooks,
 ): HttpClient {
+  // composeHooks swallows hook errors so observability can never break the
+  // request flow; composing a single set reuses those semantics verbatim.
+  const lifecycle = hooks ? composeHooks(hooks) : undefined;
   return {
     async request<TResponse, TRequest = unknown>(
       request: HttpRequest<TRequest>,
@@ -191,19 +195,22 @@ export function createFetchHttpClient(
         }
 
         try {
+          await lifecycle?.beforeRequest?.(request);
           const response = await config.fetch(url, requestInit);
 
           const data = (await parseResponse(response)) as TResponse;
 
           if (response.ok) {
             cleanup();
-            return {
+            const result: HttpResponse<TResponse> = {
               status: response.status,
               headers: response.headers,
               data,
               attempts: attempt + 1,
               retried: attempt > 0,
             };
+            await lifecycle?.afterResponse?.(request, result);
+            return result;
           }
 
           // Auth failures are terminal: retrying with the same credential just
@@ -232,7 +239,9 @@ export function createFetchHttpClient(
           ) {
             cleanup();
             attempt += 1;
-            await sleep(config.retry.retryDelayMs * attempt);
+            const delayMs = config.retry.retryDelayMs * attempt;
+            await lifecycle?.onRetry?.(request, attempt, delayMs);
+            await sleep(delayMs);
             continue;
           }
 
@@ -249,6 +258,10 @@ export function createFetchHttpClient(
           // LilySdkError instances (validation, auth, API) are definitive:
           // they must never be retried or re-wrapped.
           if (error instanceof LilySdkError) {
+            await lifecycle?.onError?.(
+              request,
+              error instanceof Error ? error : new Error(String(error)),
+            );
             throw error;
           }
 
@@ -260,11 +273,13 @@ export function createFetchHttpClient(
               isRetryableMethod(request.method)
             ) {
               attempt += 1;
-              await sleep(config.retry.retryDelayMs * attempt);
+              const delayMs = config.retry.retryDelayMs * attempt;
+              await lifecycle?.onRetry?.(request, attempt, delayMs);
+              await sleep(delayMs);
               continue;
             }
 
-            throw new LilyTransportError(
+            const transportError = new LilyTransportError(
               externallyAborted
                 ? 'Request cancelled by caller while calling Lily Protocol API.'
                 : 'Request timed out while calling Lily Protocol API.',
@@ -276,6 +291,8 @@ export function createFetchHttpClient(
                 request: requestMetadata(request, url),
               },
             );
+            await lifecycle?.onError?.(request, transportError);
+            throw transportError;
           }
 
           if (
@@ -283,11 +300,13 @@ export function createFetchHttpClient(
             isRetryableTransportError(error, request.method)
           ) {
             attempt += 1;
-            await sleep(config.retry.retryDelayMs * attempt);
+            const delayMs = config.retry.retryDelayMs * attempt;
+            await lifecycle?.onRetry?.(request, attempt, delayMs);
+            await sleep(delayMs);
             continue;
           }
 
-          throw new LilyTransportError(
+          const transportError = new LilyTransportError(
             'Network error while calling Lily Protocol API.',
             {
               code: LILY_ERROR_CODES.TRANSPORT_ERROR,
@@ -295,6 +314,11 @@ export function createFetchHttpClient(
               request: requestMetadata(request, url),
             },
           );
+          await lifecycle?.onError?.(
+            request,
+            transportError,
+          );
+          throw transportError;
         }
       }
     },
