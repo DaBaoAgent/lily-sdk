@@ -1,27 +1,22 @@
 import type { RetryPolicy } from '../http/types';
 
 /**
- * Default per-request timeout in milliseconds, applied when `timeoutMs` is
- * not provided in the SDK config. Exported as a single source of truth so
- * custom `HttpClient` implementations and documentation can reference it.
+ * Default per-request/SDK timeout in milliseconds.
+ * Single source of truth shared by `resolveLilySdkConfig` and the fetch
+ * transport; re-exported from `@lily-protocol/sdk/config` and the root
+ * entrypoint so consumers building custom `HttpClient` implementations or
+ * documentation can reference it instead of hard-coding the value.
  */
 export const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
- * Default retry policy applied when `retry` is not provided in the SDK
- * config. Exported as a single source of truth so custom `HttpClient`
- * implementations and documentation can reference it.
+ * Default retry policy applied when no `retry` overrides are provided.
+ * Single source of truth shared by `resolveLilySdkConfig` (as the base
+ * policy) and the fetch transport (as the retryable status code fallback),
+ * so the two copies can no longer drift apart silently.
  */
-export const DEFAULT_RETRY_POLICY: RetryPolicy = {
+export const DEFAULT_RETRY_POLICY: Readonly<RetryPolicy> = {
   retries: 2,
   retryDelayMs: 250,
   retryableStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
 };
-
-/**
- * Read-only view of the default retryable HTTP status codes. Shared between
- * the config resolver and the fetch transport so the fallback list cannot
- * drift apart from the resolved default policy.
- */
-export const DEFAULT_RETRYABLE_STATUS_CODES: readonly number[] =
-  DEFAULT_RETRY_POLICY.retryableStatusCodes;
